@@ -1,6 +1,27 @@
 require "test_helper"
 
 class ApplicationHelperTest < ActionView::TestCase
+  test "#theme_html_attributes renders OLED as dark plus data-oled" do
+    assert_equal(
+      { "data-theme" => "dark", "data-oled" => "", "data-theme-user-preference-value" => "oled" },
+      theme_html_attributes("oled")
+    )
+  end
+
+  test "#theme_html_attributes passes other themes through without data-oled" do
+    %w[light dark system].each do |preference|
+      attributes = theme_html_attributes(preference)
+
+      assert_equal preference, attributes["data-theme"]
+      assert_equal preference, attributes["data-theme-user-preference-value"]
+      assert_not attributes.key?("data-oled")
+    end
+  end
+
+  test "#theme_html_attributes defaults to system when there is no user" do
+    assert_equal "system", theme_html_attributes(nil)["data-theme"]
+  end
+
   test "#icon normalizes icon names to lowercase" do
     capture = []
 

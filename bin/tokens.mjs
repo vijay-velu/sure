@@ -99,6 +99,7 @@ function build() {
 
   const themeLines = [];
   const darkLines = [];
+  const oledLines = [];
   const utilityBlocks = [];
 
   for (const [path, node] of walk(tokens)) {
@@ -138,6 +139,12 @@ function build() {
     if (dark !== undefined) {
       darkLines.push(`    ${name}: ${resolveTemplate(dark)};`);
     }
+
+    // OLED is a dark sub-theme: it inherits every dark override and only replaces these.
+    const oled = node.$extensions?.["sure.oled"];
+    if (oled !== undefined) {
+      oledLines.push(`    ${name}: ${resolveTemplate(oled)};`);
+    }
   }
 
   const css = `${HEADER}
@@ -151,13 +158,17 @@ ${KEYFRAMES}
   [data-theme="dark"] {
 ${darkLines.join("\n")}
   }
+
+  [data-theme="dark"][data-oled] {
+${oledLines.join("\n")}
+  }
 }
 
 ${utilityBlocks.join("\n\n")}
 `;
 
   writeFileSync(OUT, css);
-  console.log(`tokens → ${OUT.replace(ROOT + "/", "")} (${themeLines.length} primitives, ${darkLines.length} dark overrides, ${utilityBlocks.length} utilities)`);
+  console.log(`tokens → ${OUT.replace(ROOT + "/", "")} (${themeLines.length} primitives, ${darkLines.length} dark overrides, ${oledLines.length} oled overrides, ${utilityBlocks.length} utilities)`);
 }
 
 try {

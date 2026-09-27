@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<% theme = Current.user&.theme || "system" %>
 <html
   lang="en"
-  data-theme="<%= theme %>"
+  <%= tag.attributes(theme_html_attributes(Current.user&.theme)) %>
   data-controller="theme"
-  data-theme-user-preference-value="<%= Current.user&.theme || "system" %>"
   class="h-full text-primary overflow-hidden lg:overflow-auto font-sans">
   <head>
     <%= render "layouts/shared/head" %>

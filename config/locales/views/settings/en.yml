@@ -169,6 +169,7 @@ en:
         theme_subtitle: Choose a preferred theme for the app
         theme_dark: Dark
         theme_light: Light
+        theme_oled: OLED
         theme_system: System
         modals_title: Modals
         modals_subtitle: Customize modal behavior

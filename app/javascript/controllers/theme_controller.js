@@ -18,33 +18,33 @@ export default class extends Controller {
 
   // Called when a theme radio button is clicked
   updateTheme(event) {
-    const selectedTheme = event.currentTarget.value;
-    if (selectedTheme === "system") {
-      this.setTheme(this.systemPrefersDark());
-    } else if (selectedTheme === "dark") {
-      this.setTheme(true);
-    } else {
-      this.setTheme(false);
-    }
+    this.applyPreference(event.currentTarget.value);
   }
 
   // Applies theme based on the userPreferenceValue (from server)
   applyTheme() {
-    if (this.userPreferenceValue === "system") {
+    this.applyPreference(this.userPreferenceValue);
+  }
+
+  applyPreference(preference) {
+    if (preference === "system") {
       this.setTheme(this.systemPrefersDark());
-    } else if (this.userPreferenceValue === "dark") {
-      this.setTheme(true);
+    } else if (preference === "oled") {
+      this.setTheme(true, { oled: true });
     } else {
-      this.setTheme(false);
+      this.setTheme(preference === "dark");
     }
   }
 
   // Sets the data-theme attribute and broadcasts a `theme:change` event so
   // imperative consumers (D3/SVG/canvas) can repaint without polling.
-  setTheme(isDark) {
+  // OLED keeps data-theme="dark" (so all theme-dark styles and chart repaints apply)
+  // and adds data-oled, which only swaps surface/container tokens to true black.
+  setTheme(isDark, { oled = false } = {}) {
     const theme = isDark ? "dark" : "light";
-    localStorage.theme = theme;
+    localStorage.theme = oled ? "oled" : theme;
     document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.toggleAttribute("data-oled", oled);
     document.documentElement.dispatchEvent(
       new CustomEvent("theme:change", { detail: { theme } }),
     );

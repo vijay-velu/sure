@@ -9,6 +9,19 @@ module ApplicationHelper
     Rails.configuration.x.brand_name
   end
 
+  # Attributes for the root <html> element from a user's theme preference.
+  # OLED is dark with true-black surfaces, so it renders data-theme="dark" (keeping every
+  # theme-dark style) plus data-oled, which only swaps the surface/container tokens.
+  def theme_html_attributes(preference)
+    preference = preference.presence || "system"
+
+    {
+      "data-theme" => preference == "oled" ? "dark" : preference,
+      "data-oled" => preference == "oled" ? "" : nil,
+      "data-theme-user-preference-value" => preference
+    }.compact
+  end
+
   def styled_form_with(**options, &block)
     options[:builder] = StyledFormBuilder
     form_with(**options, &block)
