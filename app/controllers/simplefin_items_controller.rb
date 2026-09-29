@@ -242,9 +242,9 @@ class SimplefinItemsController < ApplicationController
     account_subtypes = params[:account_subtypes] || {}
     stale_account_actions = permitted_stale_account_actions
 
-    # Update sync start date from form
-    if params[:sync_start_date].present?
-      @simplefin_item.update!(sync_start_date: params[:sync_start_date])
+    # Update sync start date from form (a blank value clears it)
+    if params.key?(:sync_start_date)
+      @simplefin_item.update!(sync_start_date: permitted_sync_start_date)
     end
 
     # Process stale account actions first
@@ -536,6 +536,15 @@ class SimplefinItemsController < ApplicationController
 
         result[simplefin_account_id] = permitted if permitted[:action].present?
       end
+    end
+
+    # Date inputs submit ISO 8601 (YYYY-MM-DD); blank or malformed values yield nil.
+    # Future dates are clamped to today: the chunked history import walks back to
+    # this date, so a future one would fetch nothing.
+    def permitted_sync_start_date
+      [ Date.iso8601(params[:sync_start_date].to_s), Date.current ].min
+    rescue Date::Error
+      nil
     end
 
     def render_error(message, setup_token = nil, context: :new)

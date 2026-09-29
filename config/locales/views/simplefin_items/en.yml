@@ -54,6 +54,8 @@ en:
       account_type_other_asset_desc: Everything else
       transaction_history_title: "Transaction History:"
       transaction_history_description_html: "SimpleFIN typically provides <strong>60-90 days</strong> of transaction history, depending on your bank. After initial setup, new transactions will sync automatically going forward. Historical data availability varies by institution and account type."
+      sync_start_date_label: Import transactions from
+      sync_start_date_hint: Optional. Leave blank to import all available history (up to one year), or pick a later date to skip older transactions. Applies to the first history import after setup.
       account_type_label: "Account Type:"
       create_accounts: Create Accounts
       creating_accounts: Creating Accounts...
