@@ -424,6 +424,46 @@ class SimplefinItemsControllerTest < ActionDispatch::IntegrationTest
     # The newly created account for the unlinked SFA should now exist
     assert_not_nil unlinked_sfa.account_id
   end
+
+  test "setup_accounts renders sync_start_date field prefilled with the stored date" do
+    travel_to Time.utc(2026, 6, 15, 12) do
+      @simplefin_item.update!(sync_start_date: Date.new(2026, 3, 1))
+
+      get setup_accounts_simplefin_item_url(@simplefin_item)
+
+      assert_response :success
+      assert_select "input[type=date][name=sync_start_date][value=?][max=?]", "2026-03-01", "2026-06-15"
+    end
+  end
+
+  test "complete_account_setup stores sync_start_date" do
+    start_date = 3.months.ago.to_date
+
+    post complete_account_setup_simplefin_item_url(@simplefin_item), params: { sync_start_date: start_date.iso8601 }
+
+    assert_redirected_to accounts_path
+    assert_equal start_date, @simplefin_item.reload.sync_start_date
+  end
+
+  test "complete_account_setup clamps a future sync_start_date to today" do
+    travel_to Time.utc(2026, 6, 15, 12) do
+      post complete_account_setup_simplefin_item_url(@simplefin_item), params: { sync_start_date: "2026-07-01" }
+
+      assert_equal Date.new(2026, 6, 15), @simplefin_item.reload.sync_start_date
+    end
+  end
+
+  test "complete_account_setup keeps sync_start_date when omitted and clears it when blank" do
+    start_date = 1.month.ago.to_date
+    @simplefin_item.update!(sync_start_date: start_date)
+
+    post complete_account_setup_simplefin_item_url(@simplefin_item), params: {}
+    assert_equal start_date, @simplefin_item.reload.sync_start_date
+
+    post complete_account_setup_simplefin_item_url(@simplefin_item), params: { sync_start_date: "" }
+    assert_nil @simplefin_item.reload.sync_start_date
+  end
+
   test "update redirects to accounts after setup without forcing a modal" do
     @simplefin_item.update!(status: :requires_update)
 

@@ -9,16 +9,16 @@
   <% end %>
 
   <% dialog.with_body do %>
-    <%= form_with url: complete_account_setup_simplefin_item_path(@simplefin_item),
-                  method: :post,
-                  local: true,
-                  data: {
-                    controller: "loading-button",
-                    action: "submit->loading-button#showLoading",
-                    loading_button_loading_text_value: t(".creating_accounts"),
-                    turbo_frame: "_top"
-                  },
-                  class: "space-y-6" do |form| %>
+    <%= styled_form_with url: complete_account_setup_simplefin_item_path(@simplefin_item),
+                         method: :post,
+                         local: true,
+                         data: {
+                           controller: "loading-button",
+                           action: "submit->loading-button#showLoading",
+                           loading_button_loading_text_value: t(".creating_accounts"),
+                           turbo_frame: "_top"
+                         },
+                         class: "space-y-6" do |form| %>
 
       <div class="space-y-4">
         <div class="bg-surface border border-primary p-4 rounded-lg">
@@ -47,9 +47,16 @@
               <p class="text-sm text-primary mb-2">
                 <strong><%= t(".transaction_history_title") %></strong>
               </p>
-              <p class="text-xs text-secondary">
+              <p class="text-xs text-secondary mb-3">
                 <%= t(".transaction_history_description_html") %>
               </p>
+
+              <%= form.date_field :sync_start_date,
+                                  label: t(".sync_start_date_label"),
+                                  value: @simplefin_item.sync_start_date,
+                                  max: Date.current %>
+
+              <p class="text-xs text-secondary mt-1"><%= t(".sync_start_date_hint") %></p>
             </div>
           </div>
         </div>
