@@ -46,6 +46,7 @@ class RecurringTransaction
         payment_url: attrs[:payment_url],
         autopay: ActiveModel::Type::Boolean.new.cast(attrs[:autopay]) || false,
         notes: attrs[:notes],
+        notify_days_before: attrs[:notify_days_before].presence,
         status: "active",
         manual: true,
         occurrence_count: 0
@@ -54,6 +55,12 @@ class RecurringTransaction
       recurring.frequency_interval = attrs[:frequency_interval]
       recurring.frequency_interval_unit = attrs[:frequency_interval_unit]
       recurring.first_due_on = attrs[:first_due_on]
+
+      # A template decides how the amount is estimated: a card statement or an
+      # electricity bill should follow what was last paid, not the first guess.
+      if (template = BillTemplate.find(attrs[:bill_template]))
+        recurring.amount_strategy = template.amount_strategy
+      end
 
       # A chosen account that does not resolve to something writable is said
       # out loud, not silently dropped: a read-only share or a foreign id

@@ -72,6 +72,23 @@
       </div>
     <% end %>
 
-    <%= render "form", recurring_transaction: @recurring_transaction, sibling_count: 0 %>
+    <% unless @recurring_transaction.is_income || params[:entry_id].present? %>
+      <div class="mb-5 space-y-2">
+        <p class="text-sm font-medium text-primary"><%= t(".templates_title") %></p>
+        <div class="flex flex-wrap gap-2">
+          <% RecurringTransaction::BillTemplate.all.each do |template| %>
+            <%= link_to template.name,
+                  new_recurring_transaction_path(template: template.key),
+                  class: class_names("text-xs px-2.5 py-1 rounded-full border border-secondary hover:bg-surface-inset",
+                                     "bg-surface-inset text-primary font-medium": @bill_template&.key == template.key,
+                                     "text-secondary": @bill_template&.key != template.key),
+                  aria: { current: (@bill_template&.key == template.key) || nil } %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%= render "form", recurring_transaction: @recurring_transaction, sibling_count: 0,
+          bill_template_key: @bill_template&.key || params.dig(:recurring_transaction, :bill_template) %>
   <% end %>
 <% end %>

@@ -1,6 +1,21 @@
 ---
 en:
   recurring_transactions:
+    bill_templates:
+      credit_card: Credit card bill
+      electricity: Electricity bill
+      broadband: Internet / broadband
+      mobile_postpaid: Mobile postpaid
+      mobile_recharge: Mobile recharge (prepaid)
+      dth_recharge: DTH recharge
+      gas: Gas (LPG / PNG)
+      water: Water bill
+      rent: Rent
+      maintenance: Society maintenance
+      loan_emi: Loan EMI
+      insurance: Insurance premium
+      school_fees: School fees
+      property_tax: Property tax
     title: Recurring Transactions
     upcoming: Upcoming Recurring Transactions
     projected: Projected
@@ -54,6 +69,7 @@ en:
       open_site: Open bill site
     new:
       title: Add a bill
+      templates_title: Common bills
       income_title: Add income
       start_from_title: Start from a recurring charge we spotted
       start_from_income_title: Start from a recurring deposit we spotted
@@ -94,6 +110,8 @@ en:
       payment_url_hint: Where you go to pay this bill. Opens in a new tab from your recurring and upcoming lists.
       autopay_label: Pays automatically
       autopay_hint: Keep it on your bills list, but stop treating it as something to do.
+      notify_days_before_label: Remind me (days before due)
+      notify_days_before_hint: "Leave blank for %{default_days} days. Reminders go out by email or push if set up in Settings → Notifications."
       more_options: More options
       notes_label: Notes
       notes_placeholder: Account 4821, charged to the Amex

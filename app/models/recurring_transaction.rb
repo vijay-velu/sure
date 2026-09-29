@@ -45,6 +45,9 @@ class RecurringTransaction < ApplicationRecord
   validates :expected_day_of_month, presence: true, numericality: { greater_than: 0, less_than_or_equal_to: 31 }
   validates :status, presence: true, inclusion: { in: statuses.keys }
   validates :occurrence_count, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :notify_days_before,
+            numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: BillReminder::MAX_NOTIFY_DAYS },
+            allow_nil: true
   # 600 covers a 50-year monthly plan and a 10-year weekly one.
   validates :end_after_count,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_END_AFTER_COUNT },

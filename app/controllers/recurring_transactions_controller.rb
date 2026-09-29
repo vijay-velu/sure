@@ -132,6 +132,7 @@ class RecurringTransactionsController < ApplicationController
       first_due_on: Date.current
     )
     @recurring_transaction.is_income = income
+    apply_bill_template(@recurring_transaction, params[:template]) unless income
 
     # Accessible, not merely same-family: prefilling reads the entry's name,
     # amount and account straight back to the user.
@@ -362,7 +363,8 @@ class RecurringTransactionsController < ApplicationController
         :payment_url, :autopay, :notes, :bill_type, :category_id,
         :renews_on, :trial_ends_on, :cancelled_on, :end_after_count,
         :frequency_preset, :frequency_day_of_month, :frequency_second_day_of_month,
-        :frequency_weekday, :frequency_month_of_year, :frequency_interval, :frequency_interval_unit
+        :frequency_weekday, :frequency_month_of_year, :frequency_interval, :frequency_interval_unit,
+        :notify_days_before
       )
     end
 
@@ -370,8 +372,19 @@ class RecurringTransactionsController < ApplicationController
       params.require(:recurring_transaction).permit(
         :name, :amount, :account_id, :first_due_on, :frequency_preset,
         :frequency_interval, :frequency_interval_unit,
-        :payment_url, :autopay, :notes, :is_income
+        :payment_url, :autopay, :notes, :is_income, :notify_days_before, :bill_template
       )
+    end
+
+    def apply_bill_template(recurring, key)
+      return unless (template = RecurringTransaction::BillTemplate.find(key))
+
+      recurring.name = template.name
+      recurring.frequency_preset = template.frequency_preset
+      recurring.frequency_interval = template.frequency_interval
+      recurring.frequency_interval_unit = template.frequency_interval_unit
+      recurring.notify_days_before = template.notify_days_before
+      @bill_template = template
     end
 
     def build_declared_bill

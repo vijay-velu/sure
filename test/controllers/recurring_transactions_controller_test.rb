@@ -1157,6 +1157,43 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "https://pay.example/theirs", read_only_sibling.reload.payment_url
   end
 
+
+  test "a common bill template prefills the add form" do
+    get new_recurring_transaction_url(template: "mobile_recharge"), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
+    assert_select "input[name='recurring_transaction[name]'][value=?]", "Mobile recharge (prepaid)"
+    assert_select "select[name='recurring_transaction[frequency_preset]'] option[selected][value='interval']"
+    assert_select "input[name='recurring_transaction[frequency_interval]'][value='4']"
+    assert_select "input[name='recurring_transaction[notify_days_before]'][value='2']"
+    assert_select "input[type=hidden][name='recurring_transaction[bill_template]'][value='mobile_recharge']"
+  end
+
+  test "a variable bill from a template tracks the last amount paid" do
+    post recurring_transactions_url, params: {
+      recurring_transaction: {
+        name: "HDFC credit card",
+        amount: "12340",
+        account_id: accounts(:depository).id,
+        first_due_on: (Date.current + 12).iso8601,
+        frequency_preset: "monthly",
+        notify_days_before: "5",
+        bill_template: "credit_card"
+      }
+    }
+
+    bill = @family.recurring_transactions.find_by!(name: "HDFC credit card")
+    assert_equal "last", bill.amount_strategy
+    assert_equal 5, bill.notify_days_before
+  end
+
+  test "reminder days are editable and bounded" do
+    patch recurring_transaction_url(@recurring_transaction), params: { recurring_transaction: { notify_days_before: "7" } }
+    assert_equal 7, @recurring_transaction.reload.notify_days_before
+
+    @recurring_transaction.notify_days_before = 90
+    assert_not @recurring_transaction.valid?
+  end
   private
 
     def create_series(name:, account: accounts(:depository), merchant: nil, status: "active", payment_url: nil)

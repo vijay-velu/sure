@@ -1,4 +1,4 @@
-<%# locals: (recurring_transaction:, sibling_count: 0) %>
+<%# locals: (recurring_transaction:, sibling_count: 0, bill_template_key: nil) %>
 
 <%# Income mode reshapes the dialog: a paycheck has a source and a payday,
     not a biller portal and an autopay toggle. %>
@@ -67,6 +67,9 @@
         bill-shaped labels, pressed Save bill, and got income. %>
     <% if recurring_transaction.new_record? && income %>
       <%= hidden_field_tag "recurring_transaction[is_income]", "1" %>
+    <% end %>
+    <% if recurring_transaction.new_record? && bill_template_key.present? %>
+      <%= hidden_field_tag "recurring_transaction[bill_template]", bill_template_key %>
     <% end %>
 
     <%# Name, amount, due date and how often are the whole job for most
@@ -171,6 +174,16 @@
             <p class="text-xs text-secondary"><%= t(".autopay_hint") %></p>
           </div>
           <%= f.toggle :autopay %>
+        </div>
+
+        <div class="space-y-2">
+          <%= f.number_field :notify_days_before,
+                label: t(".notify_days_before_label"),
+                placeholder: RecurringOccurrence::DEFAULT_NOTIFY_DAYS,
+                min: 0,
+                max: BillReminder::MAX_NOTIFY_DAYS,
+                step: 1 %>
+          <p class="text-xs text-secondary"><%= t(".notify_days_before_hint", default_days: RecurringOccurrence::DEFAULT_NOTIFY_DAYS) %></p>
         </div>
       <% end %>
       <div class="space-y-2">
