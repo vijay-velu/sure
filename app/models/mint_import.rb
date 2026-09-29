@@ -59,7 +59,8 @@ class MintImport < Import
           currency: effective_currency,
           notes: row.notes,
           entryable: Transaction.new(category: category, tags: tags),
-          import: self
+          import: self,
+          import_locked: true # Protect from provider sync overwrites
 
         entry.save!
       end
