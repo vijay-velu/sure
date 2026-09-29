@@ -68,7 +68,8 @@ class SimplefinItemsController < ApplicationController
     begin
       @simplefin_item = Current.family.create_simplefin_item!(
         setup_token: setup_token,
-        item_name: "SimpleFIN Connection"
+        item_name: "SimpleFIN Connection",
+        sync_start_date: simplefin_params[:sync_start_date].presence
       )
 
       if turbo_frame_request?

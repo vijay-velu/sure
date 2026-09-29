@@ -649,6 +649,8 @@ en:
         step_3: "Then head to Accounts to link your synced accounts."
         setup_token_label: "Setup Token"
         setup_token_placeholder: "Paste SimpleFIN setup token"
+        sync_start_date_label: "Import transactions from (optional)"
+        sync_start_date_hint: "Limits how far back the first sync goes. Use it to skip history you've already imported another way. Leave blank to import everything SimpleFIN provides."
         save_and_connect: "Save and connect"
       plaid_panel:
         step_1_html: "Open the %{link} and copy your Client ID and Secret Key."

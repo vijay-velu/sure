@@ -456,6 +456,20 @@ class SimplefinItemsControllerTest < ActionDispatch::IntegrationTest
     assert !q.key?("open_relink_for"), "did not expect auto-open when nothing actionable"
   end
 
+  test "create stores sync_start_date for the first sync" do
+    mock_provider = mock()
+    token = Base64.strict_encode64("https://example.com/claim")
+    mock_provider.expects(:claim_access_url).with(token).returns("https://example.com/new_access")
+    Provider::Simplefin.expects(:new).returns(mock_provider).at_least_once
+
+    assert_difference "SimplefinItem.count", 1 do
+      post simplefin_items_url, params: { simplefin_item: { setup_token: token, sync_start_date: "2026-03-01" } }
+    end
+
+    item = @family.simplefin_items.find_by!(access_url: "https://example.com/new_access")
+    assert_equal Date.new(2026, 3, 1), item.sync_start_date
+  end
+
   test "update does not auto-open when no SFAs present" do
     @simplefin_item.update!(status: :requires_update)
 

@@ -24,6 +24,12 @@
                         placeholder: t("settings.providers.simplefin_panel.setup_token_placeholder"),
                         type: :password %>
 
+    <%= form.date_field :sync_start_date,
+                        label: t("settings.providers.simplefin_panel.sync_start_date_label"),
+                        max: Date.current %>
+
+    <p class="text-xs text-secondary"><%= t("settings.providers.simplefin_panel.sync_start_date_hint") %></p>
+
     <div class="flex justify-end">
       <%= form.submit t("settings.providers.simplefin_panel.save_and_connect") %>
     </div>
