@@ -23,7 +23,15 @@ class Import::UploadsController < ApplicationController
       @import.assign_attributes(raw_file_str: csv_str, col_sep: upload_params[:col_sep])
       @import.save!(validate: false)
 
-      redirect_to import_configuration_path(@import, template_hint: true), notice: t("imports.create.csv_uploaded")
+      preset = @import.apply_bank_preset! if @import.is_a?(TransactionImport) && @import.suggested_template.nil?
+      notice =
+        if preset
+          t("imports.create.bank_statement_detected", bank: preset.bank || t("imports.create.bank_statement_generic"))
+        else
+          t("imports.create.csv_uploaded")
+        end
+
+      redirect_to import_configuration_path(@import, template_hint: true), notice: notice
     else
       flash.now[:alert] = t("import.uploads.show.csv_invalid", default: "Must be valid CSV with headers and at least one row of data")
 

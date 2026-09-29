@@ -73,7 +73,7 @@ class Import < ApplicationRecord
     MAX_CSV_SIZE
   end
 
-  AMOUNT_TYPE_STRATEGIES = %w[signed_amount custom_column].freeze
+  AMOUNT_TYPE_STRATEGIES = %w[signed_amount custom_column split_columns].freeze
 
   belongs_to :family
   belongs_to :account, optional: true
@@ -106,6 +106,7 @@ class Import < ApplicationRecord
   validates :client_chunk_id, length: { maximum: 255 }, allow_blank: true
   validates :checksum, length: { is: 64 }, allow_blank: true
   validate :custom_column_import_requires_identifier
+  validate :split_columns_import_requires_both_columns
   validates :rows_to_skip, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :account_belongs_to_family
   validate :import_session_belongs_to_family
@@ -391,13 +392,13 @@ class Import < ApplicationRecord
         ticker: csv_value(row, ticker_col_label, "ticker").to_s,
         exchange_operating_mic: csv_value(row, exchange_operating_mic_col_label, "exchange_operating_mic").to_s,
         price: sanitize_number(csv_value(row, price_col_label, "price")).to_s,
-        amount: sanitize_number(csv_value(row, amount_col_label, "amount", "balance")).to_s,
+        amount: csv_amount(row).to_s,
         currency: (csv_value(row, currency_col_label, "currency") || default_currency).to_s,
-        name: (csv_value(row, name_col_label, "name") || default_row_name).to_s,
+        name: row_name(row),
         category: csv_value(row, category_col_label, "category").to_s,
         tags: csv_value(row, tags_col_label, "tags").to_s,
         entity_type: csv_value(row, entity_type_col_label, "entity_type", "account_type", "type").to_s,
-        notes: csv_value(row, notes_col_label, "notes").to_s
+        notes: row_notes(row)
       }
     end
 
@@ -498,7 +499,8 @@ class Import < ApplicationRecord
         "entity_type_col_label", "notes_col_label", "currency_col_label",
         "date_format", "signage_convention", "number_format",
         "exchange_operating_mic_col_label",
-        "rows_to_skip"
+        "rows_to_skip", "amount_type_strategy",
+        "outflow_col_label", "inflow_col_label", "clean_bank_narrations"
       )
     )
   end
@@ -643,6 +645,33 @@ class Import < ApplicationRecord
       @parsed_csv = self.class.parse_csv_str(csv_content, col_sep: col_sep)
     end
 
+    # The row amount: a single (signed) amount column, or for "split_columns" the outflow
+    # column minus the inflow column, already in Sure's sign (outflow positive).
+    def csv_amount(row)
+      return sanitize_number(csv_value(row, amount_col_label, "amount", "balance")) unless amount_type_strategy == "split_columns"
+
+      outflow = sanitize_number(row[outflow_col_label]).presence
+      inflow = sanitize_number(row[inflow_col_label]).presence
+      return "" if outflow.nil? && inflow.nil?
+
+      (outflow.to_d - inflow.to_d).to_s
+    end
+
+    def row_name(row)
+      name = (csv_value(row, name_col_label, "name") || default_row_name).to_s
+      clean_bank_narrations? ? Import::IndianBankNarration.parse(name).name.presence || name : name
+    end
+
+    # With narration cleanup on, the bank's original narration is kept in the notes (after
+    # any notes column) so it stays searchable once the name is shortened.
+    def row_notes(row)
+      notes = csv_value(row, notes_col_label, "notes").to_s
+      return notes unless clean_bank_narrations?
+
+      original = Import::IndianBankNarration.parse(csv_value(row, name_col_label, "name")).notes
+      [ notes.presence, original ].compact.uniq.join(" · ")
+    end
+
     # Normalizes a raw CSV numeric string into a plain, parseable decimal string
     # based on the import's configured +number_format+ (thousands delimiter and
     # decimal separator). Returns "" when the value is blank, the format is
@@ -699,6 +728,13 @@ class Import < ApplicationRecord
 
     def set_default_number_format
       self.number_format ||= "1,234.56" # Default to US/UK format
+    end
+
+    def split_columns_import_requires_both_columns
+      return unless amount_type_strategy == "split_columns"
+      return if outflow_col_label.present? && inflow_col_label.present?
+
+      errors.add(:base, I18n.t("imports.errors.split_columns_require_both"))
     end
 
     def custom_column_import_requires_identifier

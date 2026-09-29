@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_220151) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1358,6 +1358,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_220151) do
     t.string "amount_type_strategy", default: "signed_amount"
     t.string "category_col_label"
     t.string "checksum", limit: 64
+    t.boolean "clean_bank_narrations", default: false, null: false
     t.string "client_chunk_id", limit: 255
     t.string "col_sep", default: ","
     t.jsonb "column_mappings"
@@ -1374,10 +1375,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_220151) do
     t.jsonb "extracted_data"
     t.uuid "family_id", null: false
     t.uuid "import_session_id"
+    t.string "inflow_col_label"
     t.string "name_col_label"
     t.string "normalized_csv_str"
     t.string "notes_col_label"
     t.string "number_format"
+    t.string "outflow_col_label"
     t.string "price_col_label"
     t.string "qty_col_label"
     t.string "raw_file_str"

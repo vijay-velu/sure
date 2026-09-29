@@ -51,6 +51,9 @@ class Import::ConfigurationsController < ApplicationController
         :amount_type_strategy,
         :amount_type_identifier_value,
         :amount_type_inflow_value,
+        :outflow_col_label,
+        :inflow_col_label,
+        :clean_bank_narrations,
         :rows_to_skip
       )
     end

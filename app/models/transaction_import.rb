@@ -86,6 +86,41 @@ class TransactionImport < Import
     %i[date amount]
   end
 
+  # Day-first formats, tried in this order, for statements recognised by Import::BankPreset.
+  BANK_STATEMENT_DATE_FORMATS = [ "%d/%m/%y", "%d/%m/%Y", "%d-%m-%Y", "%d %b %Y", "%d.%m.%Y", "%Y-%m-%d" ].freeze
+
+  # Pre-fills the configuration for a statement with separate withdrawal/deposit columns
+  # (see Import::BankPreset): header row, date/narration/amount columns, and the date format
+  # read from the file itself. Narration cleanup is switched on for the Indian banks it
+  # recognises and for rupee families. Returns the preset, or nil when nothing matched.
+  def apply_bank_preset!
+    preset = Import::BankPreset.detect(raw_file_str, col_sep: col_sep || ",")
+    return unless preset
+
+    assign_attributes(
+      rows_to_skip: preset.header_row_index,
+      date_col_label: preset.date_col_label,
+      name_col_label: preset.name_col_label,
+      amount_type_strategy: "split_columns",
+      outflow_col_label: preset.outflow_col_label,
+      inflow_col_label: preset.inflow_col_label,
+      number_format: "1,234.56",
+      clean_bank_narrations: preset.bank.present? || family.currency == "INR"
+    )
+
+    # The header row moved, so the memoized parse of the file is stale.
+    remove_instance_variable(:@parsed_csv) if instance_variable_defined?(:@parsed_csv)
+    @csv_rows = nil
+    self.date_format = self.class.detect_date_format(
+      csv_rows.map { |row| row[preset.date_col_label] },
+      candidates: BANK_STATEMENT_DATE_FORMATS,
+      fallback: "%d/%m/%Y"
+    )
+
+    save!
+    preset
+  end
+
   def column_keys
     base = %i[date amount name currency category tags notes]
     base.unshift(:account) if account.nil?

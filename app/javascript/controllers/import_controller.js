@@ -13,6 +13,8 @@ export default class extends Controller {
     "amountTypeValue",
     "amountTypeInflowValue",
     "amountTypeStrategySelect",
+    "splitColumnsFieldset",
+    "amountColumn",
   ];
 
   connect() {
@@ -29,6 +31,8 @@ export default class extends Controller {
 
   handleAmountTypeStrategyChange(event) {
     const amountTypeStrategy = event.target.value;
+
+    this.#toggleSplitColumns(amountTypeStrategy === "split_columns");
 
     if (amountTypeStrategy === "custom_column") {
       this.#enableCustomColumnFieldset();
@@ -130,6 +134,36 @@ export default class extends Controller {
     const colIdx = this.csvValue[0].indexOf(column);
     const values = this.csvValue.slice(1).map((row) => row[colIdx]);
     return [...new Set(values)];
+  }
+
+  // Separate withdrawal/deposit columns replace the single amount column and both
+  // amount-type fieldsets, so their fields stop being required while it is selected.
+  #toggleSplitColumns(enabled) {
+    if (!this.hasSplitColumnsFieldsetTarget) return;
+
+    this.splitColumnsFieldsetTarget.classList.toggle("hidden", !enabled);
+    this.#setRequired(this.splitColumnsFieldsetTarget, enabled);
+
+    if (this.hasAmountColumnTarget) {
+      this.amountColumnTarget.classList.toggle("hidden", enabled);
+      this.#setRequired(this.amountColumnTarget, !enabled);
+    }
+
+    if (enabled) {
+      for (const fieldset of [
+        this.signedAmountFieldsetTarget,
+        this.customColumnFieldsetTarget,
+      ]) {
+        fieldset.classList.add("hidden");
+        this.#setRequired(fieldset, false);
+      }
+    }
+  }
+
+  #setRequired(container, required) {
+    container.querySelectorAll("select, input").forEach((field) => {
+      field.toggleAttribute("required", required);
+    });
   }
 
   #enableCustomColumnFieldset() {

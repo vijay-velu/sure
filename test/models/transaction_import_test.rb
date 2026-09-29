@@ -478,4 +478,109 @@ class TransactionImportTest < ActiveSupport::TestCase
     assert_equal "Transaction 1", rows.first.name
     assert_equal "100", rows.first.amount
   end
+
+  test "split columns import withdrawals as outflows and deposits as inflows" do
+    @import.update!(
+      raw_file_str: <<~CSV,
+        Date,Narration,Withdrawal Amt.,Deposit Amt.
+        01/09/26,Rent,"25,000.00",
+        02/09/26,Salary,,"1,20,000.00"
+        03/09/26,Adjustment,100.00,40.00
+        04/09/26,Blank,,
+      CSV
+      date_col_label: "Date",
+      name_col_label: "Narration",
+      amount_type_strategy: "split_columns",
+      outflow_col_label: "Withdrawal Amt.",
+      inflow_col_label: "Deposit Amt.",
+      date_format: "%d/%m/%y"
+    )
+
+    @import.generate_rows_from_csv
+    rows = @import.rows.order(:date)
+
+    assert_equal [ "25000.0", "-120000.0", "60.0", "" ], rows.map(&:amount)
+    assert_equal [ 25000, -120000, 60 ], rows.first(3).map { |row| row.signed_amount.to_i }
+  end
+
+  test "split columns strategy requires both columns" do
+    @import.assign_attributes(amount_type_strategy: "split_columns", outflow_col_label: "Withdrawal", inflow_col_label: nil)
+
+    assert_not @import.valid?
+    assert_includes @import.errors[:base], I18n.t("imports.errors.split_columns_require_both")
+  end
+
+  test "narration cleanup shortens names and keeps the bank narration in notes" do
+    @import.update!(
+      raw_file_str: <<~CSV,
+        date,narration,amount,memo
+        2026-09-01,UPI-SWIGGY-SWIGGY8@YBL-YESB0YBLUPI-512345678901-PAYMENT,450,dinner
+        2026-09-02,Cheque 000123,100,
+      CSV
+      date_col_label: "date",
+      name_col_label: "narration",
+      amount_col_label: "amount",
+      notes_col_label: "memo",
+      date_format: "%Y-%m-%d",
+      clean_bank_narrations: true
+    )
+
+    @import.generate_rows_from_csv
+    swiggy, cheque = @import.rows.order(:date).to_a
+
+    assert_equal "Swiggy", swiggy.name
+    assert_equal "dinner · UPI-SWIGGY-SWIGGY8@YBL-YESB0YBLUPI-512345678901-PAYMENT", swiggy.notes
+    assert_equal "Cheque 000123", cheque.name
+    assert_equal "", cheque.notes
+  end
+
+  test "apply_bank_preset! configures an HDFC statement below its account summary" do
+    @import.update!(raw_file_str: <<~CSV, col_sep: ",")
+      Account Name,MR TEST
+      Account Number,XXXXXXXX1234
+      Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance
+      01/09/26,UPI-SWIGGY-SWIGGY8@YBL-YESB0YBLUPI-512345678901-PAYMENT,0000512345678901,01/09/26,450.00,,98550.00
+      30/09/26,NEFT CR-SBIN0001234-ACME CORP PVT LTD-SALARY SEP-N123456789012,N123456789012,30/09/26,,"1,20,000.00","2,18,550.00"
+    CSV
+
+    preset = @import.apply_bank_preset!
+    @import.reload
+
+    assert_equal "HDFC Bank", preset.bank
+    assert_equal 2, @import.rows_to_skip
+    assert_equal "split_columns", @import.amount_type_strategy
+    assert_equal [ "Date", "Narration", "Withdrawal Amt.", "Deposit Amt." ],
+      [ @import.date_col_label, @import.name_col_label, @import.outflow_col_label, @import.inflow_col_label ]
+    assert_equal "%d/%m/%y", @import.date_format
+    assert @import.clean_bank_narrations?
+
+    @import.generate_rows_from_csv
+    rows = @import.rows.order(:date)
+
+    assert_equal [ Date.new(2026, 9, 1), Date.new(2026, 9, 30) ], rows.map { |row| Date.strptime(row.date, @import.date_format) }
+    assert_equal [ "Swiggy", "Acme Corp Pvt Ltd" ], rows.map(&:name)
+    assert_equal [ "450.0", "-120000.0" ], rows.map(&:amount)
+  end
+
+  test "apply_bank_preset! leaves statements it does not recognise alone" do
+    @import.update!(raw_file_str: "date,name,amount\n2026-09-01,Coffee,-4.50\n", col_sep: ",")
+
+    assert_nil @import.apply_bank_preset!
+    assert_nil @import.reload.outflow_col_label
+  end
+
+  test "templates carry the split column configuration" do
+    template = @import.family.imports.create!(
+      type: "TransactionImport",
+      amount_type_strategy: "split_columns",
+      outflow_col_label: "Debit",
+      inflow_col_label: "Credit",
+      clean_bank_narrations: true
+    )
+
+    @import.apply_template!(template)
+
+    assert_equal [ "split_columns", "Debit", "Credit", true ],
+      [ @import.amount_type_strategy, @import.outflow_col_label, @import.inflow_col_label, @import.clean_bank_narrations ]
+  end
 end

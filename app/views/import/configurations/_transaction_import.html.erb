@@ -28,11 +28,14 @@
   </div>
 
   <%# Amount Configuration %>
+  <% split_columns = @import.amount_type_strategy == "split_columns" %>
   <div class="flex items-center gap-4">
-    <%= form.select :amount_col_label,
-                    import.csv_headers,
-                    { label: t(".amount_label"), container_class: "w-2/5", prompt: t(".select_column") },
-                    required: true %>
+    <%= tag.div class: class_names("w-2/5", hidden: split_columns), data: { import_target: "amountColumn" } do %>
+      <%= form.select :amount_col_label,
+                      import.csv_headers,
+                      { label: t(".amount_label"), prompt: t(".select_column") },
+                      required: !split_columns %>
+    <% end %>
     <%= form.select :currency_col_label,
                     import.csv_headers,
                     { include_blank: t(".default"), label: t(".currency_label"), container_class: "w-1/5" } %>
@@ -44,7 +47,7 @@
 
   <%# Amount Type Strategy %>
   <%= form.select :amount_type_strategy,
-                  Import::AMOUNT_TYPE_STRATEGIES.map { |strategy| [strategy.humanize, strategy] },
+                  Import::AMOUNT_TYPE_STRATEGIES.map { |strategy| [t(".amount_type_strategies.#{strategy}", default: strategy.humanize), strategy] },
                   { label: t(".amount_type_strategy_label"), prompt: t(".select_strategy") },
                   required: true,
                   data: {
@@ -101,6 +104,22 @@
     </div>
   <% end %>
 
+  <%# Separate withdrawal / deposit columns %>
+  <%= tag.fieldset data: { import_target: "splitColumnsFieldset" },
+                   class: split_columns ? "block" : "hidden" do %>
+    <div class="flex items-center gap-4">
+      <span class="text-sm shrink-0 text-secondary">↪</span>
+      <%= form.select :outflow_col_label,
+                      import.csv_headers,
+                      { label: t(".outflow_column_label"), prompt: t(".select_column") },
+                      required: split_columns %>
+      <%= form.select :inflow_col_label,
+                      import.csv_headers,
+                      { label: t(".inflow_column_label"), prompt: t(".select_column") },
+                      required: split_columns %>
+    </div>
+  <% end %>
+
   <%# Optional Fields %>
   <% unless import.account.present? %>
     <%= form.select :account_col_label,
@@ -111,6 +130,13 @@
   <%= form.select :name_col_label,
                   import.csv_headers,
                   { include_blank: t(".leave_empty"), label: t(".name_label") } %>
+  <div class="flex items-center justify-between gap-3 py-2">
+    <div class="space-y-1">
+      <p class="text-sm text-primary"><%= t(".clean_bank_narrations_label") %></p>
+      <p class="text-secondary text-sm"><%= t(".clean_bank_narrations_hint") %></p>
+    </div>
+    <%= form.toggle :clean_bank_narrations %>
+  </div>
   <%= form.select :category_col_label,
                   import.csv_headers,
                   { include_blank: t(".leave_empty"), label: t(".category_label") } %>

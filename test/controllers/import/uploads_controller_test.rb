@@ -77,4 +77,20 @@ class Import::UploadsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_equal "Must be valid CSV with headers and at least one row of data", flash[:alert]
   end
+
+  test "pre-fills the configuration when a bank statement is recognised" do
+    patch import_upload_url(@import), params: {
+      import: {
+        raw_file_str: <<~CSV,
+          Date,Narration,Chq./Ref.No.,Value Dt,Withdrawal Amt.,Deposit Amt.,Closing Balance
+          01/09/26,UPI-SWIGGY-SWIGGY8@YBL-YESB0YBLUPI-512345678901-PAYMENT,0000512345678901,01/09/26,450.00,,98550.00
+        CSV
+        col_sep: ","
+      }
+    }
+
+    assert_redirected_to import_configuration_url(@import, template_hint: true)
+    assert_equal I18n.t("imports.create.bank_statement_detected", bank: "HDFC Bank"), flash[:notice]
+    assert_equal "split_columns", @import.reload.amount_type_strategy
+  end
 end

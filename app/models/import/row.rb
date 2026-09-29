@@ -96,7 +96,9 @@ class Import::Row < ApplicationRecord
 
     # In the Sure system, positive amounts == "outflows", so we must reverse signage
     def apply_transaction_signage_convention(value)
-      if import.amount_type_strategy == "signed_amount"
+      if import.amount_type_strategy == "split_columns"
+        value # csv_amount already produced Sure's sign: outflow positive
+      elsif import.amount_type_strategy == "signed_amount"
         value * (import.signage_convention == "inflows_positive" ? -1 : 1)
       elsif import.amount_type_strategy == "custom_column"
         legacy_identifier = import.amount_type_inflow_value

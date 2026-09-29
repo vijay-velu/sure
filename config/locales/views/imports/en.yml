@@ -63,6 +63,12 @@ en:
         currency_label: Currency
         format_label: Format
         amount_type_strategy_label: Amount type strategy
+        amount_type_strategies:
+          split_columns: Separate withdrawal and deposit columns
+        outflow_column_label: Withdrawal (money out) column
+        inflow_column_label: Deposit (money in) column
+        clean_bank_narrations_label: Clean up Indian bank narrations
+        clean_bank_narrations_hint: Shortens UPI, NEFT, IMPS, card and ATM narrations to the counterparty's name and keeps the full narration in the notes.
         select_strategy: Select strategy
         set: Set
         as_amount_type_column: as amount type column
@@ -444,6 +450,8 @@ en:
       file_too_large: File is too large. Maximum size is %{max_size}MB.
       invalid_file_type: Invalid file type. Please upload a CSV file.
       csv_uploaded: CSV uploaded successfully.
+      bank_statement_detected: "%{bank} statement recognised: columns, date format and narration cleanup are pre-filled. Check them below."
+      bank_statement_generic: "Bank"
       ndjson_uploaded: NDJSON file uploaded successfully.
       pdf_too_large: PDF file is too large. Maximum size is %{max_size}MB.
       pdf_processing: Your PDF is being processed. You will receive an email when analysis is complete.
@@ -513,6 +521,7 @@ en:
       provider_merchant_diff_row: "%{field}: keeping %{kept}, file has %{imported}"
     errors:
       custom_column_requires_inflow: "Custom column imports require an inflow column to be selected"
+      split_columns_require_both: "Separate withdrawal and deposit columns require both columns to be selected"
       interrupted: "The background worker was interrupted before this finished. Imported data was rolled back — you can safely try again."
       presumed_lost: "Marked as failed after the background job was presumed lost. The imported data was rolled back — you can safely try again."
     document_types:
