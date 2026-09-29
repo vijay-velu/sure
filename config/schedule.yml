@@ -67,6 +67,12 @@ generate_recurring_occurrences:
   queue: "scheduled"
   description: "Materializes the rolling window of recurring-transaction occurrences for every family"
 
+send_bill_reminders:
+  cron: "45 * * * *" # hourly; each family is only messaged during its own daytime hours
+  class: "BillRemindersJob"
+  queue: "scheduled"
+  description: "Sends due-soon and overdue bill reminders by email and push webhook"
+
 generate_insights:
   cron: "0 6 * * *" # daily at 6:00 AM UTC, after the nightly cleanup jobs
   class: "GenerateInsightsJob"

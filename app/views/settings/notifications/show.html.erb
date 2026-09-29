@@ -1,0 +1,77 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<%= settings_section title: t(".bills_title"), subtitle: t(".bills_subtitle") do %>
+  <%= form_with url: settings_notifications_path, method: :patch,
+        class: "p-3",
+        data: { controller: "auto-submit-form" } do |f| %>
+    <div class="flex items-center gap-4 justify-between">
+      <div class="text-sm space-y-1">
+        <p class="text-primary font-medium"><%= t(".email_title") %></p>
+        <p class="text-secondary"><%= t(".email_description") %></p>
+      </div>
+      <%= render DS::Toggle.new(
+            id: "user_bill_reminder_emails",
+            name: "user[bill_reminder_emails]",
+            checked: @user.bill_reminder_emails?,
+            data: { auto_submit_form_target: "auto" }
+      ) %>
+    </div>
+  <% end %>
+<% end %>
+
+<%= settings_section title: t(".push_title"), subtitle: t(".push_subtitle") do %>
+  <% if Current.user.admin? %>
+    <div class="space-y-4">
+      <%= styled_form_with model: @webhook, url: webhook_settings_notifications_path, method: :patch, class: "space-y-4" do |form| %>
+        <% if @webhook.errors.any? %>
+          <%= render "shared/form_errors", model: @webhook %>
+        <% end %>
+
+        <%= form.text_field :url,
+              label: t(".url_label"),
+              placeholder: t(".url_placeholder"),
+              required: true,
+              autocomplete: "off" %>
+        <%= form.select :payload_format,
+              [[t(".format_ntfy"), "ntfy"], [t(".format_json"), "json"]],
+              { label: t(".format_label") } %>
+        <%= form.password_field :token,
+              label: t(".token_label"),
+              value: nil,
+              placeholder: @webhook.token.present? ? t(".token_placeholder_set") : t(".token_placeholder"),
+              autocomplete: "new-password" %>
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm text-primary"><%= t(".enabled_label") %></p>
+          <%= form.toggle :enabled %>
+        </div>
+
+        <%= form.submit t(".save") %>
+      <% end %>
+
+      <% if @webhook.persisted? %>
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <%= render DS::Button.new(
+                text: t(".test"),
+                variant: :secondary,
+                href: test_webhook_settings_notifications_path,
+                method: :post
+              ) %>
+          <%= render DS::Button.new(
+                text: t(".remove"),
+                variant: :destructive,
+                href: webhook_settings_notifications_path,
+                method: :delete,
+                confirm: CustomConfirm.for_resource_deletion(t(".remove_confirm"))
+              ) %>
+          <% if @webhook.last_error.present? %>
+            <span class="text-destructive"><%= t(".last_error", error: @webhook.last_error) %></span>
+          <% elsif @webhook.last_delivered_at %>
+            <span class="text-secondary"><%= t(".last_delivered", time: time_ago_in_words(@webhook.last_delivered_at)) %></span>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <p class="text-sm text-secondary"><%= t(".admin_only_hint") %></p>
+  <% end %>
+<% end %>

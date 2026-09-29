@@ -1,0 +1,13 @@
+<h1><%= @message.title %></h1>
+
+<ul>
+  <% @message.lines.each do |line| %>
+    <li><%= line %></li>
+  <% end %>
+</ul>
+
+<p style="margin-top: 16px;">
+  <%= link_to t(".cta"), @message.url, class: "button" %>
+</p>
+
+<p><%= t(".footer") %></p>

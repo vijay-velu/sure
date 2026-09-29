@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_29_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_29_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -278,6 +278,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120100) do
     t.index ["account_id", "date", "currency"], name: "index_account_balances_on_account_id_date_currency_unique", unique: true
     t.index ["account_id", "date"], name: "index_balances_on_account_id_and_date", order: { date: :desc }
     t.index ["account_id"], name: "index_balances_on_account_id"
+  end
+
+  create_table "bill_reminder_deliveries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "channel", null: false
+    t.datetime "created_at", null: false
+    t.date "due_on", null: false
+    t.string "kind", null: false
+    t.uuid "recurring_occurrence_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["recurring_occurrence_id", "kind", "due_on", "channel"], name: "index_bill_reminder_deliveries_uniqueness", unique: true
+  end
+
+  create_table "bill_reminder_webhooks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.uuid "family_id", null: false
+    t.datetime "last_delivered_at"
+    t.string "last_error"
+    t.string "payload_format", default: "ntfy", null: false
+    t.text "token"
+    t.datetime "updated_at", null: false
+    t.text "url", null: false
+    t.uuid "user_id", null: false
+    t.index ["family_id"], name: "index_bill_reminder_webhooks_on_family_id", unique: true
+    t.index ["user_id"], name: "index_bill_reminder_webhooks_on_user_id"
+    t.check_constraint "payload_format::text = ANY (ARRAY['ntfy'::character varying, 'json'::character varying]::text[])", name: "chk_bill_reminder_webhooks_payload_format"
   end
 
   create_table "binance_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -2938,6 +2964,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_29_120100) do
   add_foreign_key "akahu_items", "families"
   add_foreign_key "api_keys", "users"
   add_foreign_key "balances", "accounts", on_delete: :cascade
+  add_foreign_key "bill_reminder_deliveries", "recurring_occurrences", on_delete: :cascade
+  add_foreign_key "bill_reminder_webhooks", "families", on_delete: :cascade
+  add_foreign_key "bill_reminder_webhooks", "users", on_delete: :cascade
   add_foreign_key "binance_accounts", "binance_items"
   add_foreign_key "binance_items", "families"
   add_foreign_key "brex_accounts", "brex_items"

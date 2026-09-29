@@ -162,6 +162,42 @@ en:
         manage: "Manage"
         choose_level: "Choose level"
         payment_via_stripe: "Payment via Stripe"
+    notifications:
+      admin_only: Only family admins can change the push channel.
+      show:
+        page_title: Notifications
+        bills_title: Bill reminders
+        bills_subtitle: A reminder when a bill enters its "remind me" window (3 days before the due date unless set on the bill) and when it goes overdue. Sent once per bill, between 8 AM and 10 PM in the family's time zone.
+        email_title: Email me bill reminders
+        email_description: Lists only bills on accounts you can see. Needs SMTP to be configured on this server.
+        push_title: Push to your phone
+        push_subtitle: Send the same reminders to a self-hosted ntfy topic, Gotify, or any endpoint that accepts a JSON POST. Bill names and amounts leave this server, so point it at a server you trust.
+        url_label: URL
+        url_placeholder: https://ntfy.example.com/bills
+        format_label: Format
+        format_ntfy: ntfy (topic URL)
+        format_json: JSON (Gotify /message, webhooks)
+        token_label: Access token (optional)
+        token_placeholder_set: Saved. Leave blank to keep it
+        token_placeholder: tk_... or Gotify app token
+        enabled_label: Send push reminders
+        save: Save push channel
+        test: Send test
+        remove: Remove
+        remove_confirm: push channel
+        last_delivered: Last delivered %{time} ago
+        last_error: "Last attempt failed: %{error}"
+        admin_only_hint: Only family admins can set up the push channel.
+      update:
+        success: Notification preferences saved.
+      update_webhook:
+        success: Push channel saved.
+      destroy_webhook:
+        success: Push channel removed.
+      test_webhook:
+        success: Test message sent.
+        failure: "Test failed: %{error}"
+        not_configured: Save a push channel first.
     appearances:
       show:
         page_title: Appearance
@@ -381,6 +417,7 @@ en:
       whats_new_label: What's new
       api_keys_label: API Keys
       appearance_label: Appearance
+      notifications_label: Notifications
       bank_sync_label: Bank sync
       debug_label: Debug
     settings_nav_link_large:

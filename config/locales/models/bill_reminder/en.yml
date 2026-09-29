@@ -1,0 +1,23 @@
+---
+en:
+  bill_reminders:
+    message:
+      title_due:
+        one: 1 bill due soon
+        other: "%{count} bills due soon"
+      title_overdue:
+        one: 1 bill overdue
+        other: "%{count} bills overdue"
+      due_line: "%{name}: %{amount} due %{when} (%{date})"
+      overdue_line: "Overdue: %{name}: %{amount}, was due %{when} (%{date})"
+      autopay: "[autopay]"
+      today: today
+      tomorrow: tomorrow
+      in_days:
+        one: in 1 day
+        other: in %{count} days
+      days_ago:
+        one: 1 day ago
+        other: "%{count} days ago"
+      test_title: Sure bill reminders
+      test_body: Test message. Bill reminders will arrive here.

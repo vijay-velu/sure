@@ -702,6 +702,11 @@ class User < ApplicationRecord
     preferences&.dig("preview_features_enabled") == true
   end
 
+  # Opt-in: a daily-hours digest of bills coming due or overdue (see BillReminder).
+  def bill_reminder_emails?
+    preferences&.dig("bill_reminder_emails") == true
+  end
+
   private
     def apply_ui_layout_defaults
       self.ui_layout = (ui_layout.presence || self.class.default_ui_layout)

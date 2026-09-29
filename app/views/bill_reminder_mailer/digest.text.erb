@@ -1,0 +1,9 @@
+<%= @message.title %>
+
+<% @message.lines.each do |line| %>
+- <%= line %>
+<% end %>
+
+<%= t(".cta") %>: <%= @message.url %>
+
+<%= t(".footer") %>

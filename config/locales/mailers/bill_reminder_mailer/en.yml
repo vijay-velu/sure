@@ -1,0 +1,6 @@
+---
+en:
+  bill_reminder_mailer:
+    digest:
+      cta: Open bills
+      footer: You get these because bill reminder emails are on in Settings → Notifications.
