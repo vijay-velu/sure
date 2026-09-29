@@ -13,6 +13,13 @@ class ActualImport < Import
   }.freeze
 
   CATEGORY_GROUP_COLUMN = "Category_Group".freeze
+  SPLIT_AMOUNT_COLUMN = "Split_Amount".freeze
+
+  # Actual books an account's opening balance as a transaction from this payee, filed under the
+  # "Starting Balances" income category on budget accounts and uncategorized on tracking accounts.
+  # Both names are created by Actual itself, so they are stable across budgets.
+  STARTING_BALANCE_PAYEE = "Starting Balance".freeze
+  STARTING_BALANCES_CATEGORY = "Starting Balances".freeze
 
   def self.default_column_mappings
     DEFAULT_COLUMN_MAPPINGS
@@ -21,7 +28,11 @@ class ActualImport < Import
   def generate_rows_from_csv
     rows.destroy_all
 
-    mapped_rows = csv_rows.map.with_index(1) do |row, index|
+    mapped_rows = csv_rows.each.with_index(1).filter_map do |row, index|
+      # A split parent carries its total in Split_Amount and 0 in Amount; its children are
+      # exported as rows of their own, so importing the parent would only add a $0 entry.
+      next if split_parent?(row)
+
       {
         source_row_number: index,
         account: row[account_col_label].to_s,
@@ -29,12 +40,14 @@ class ActualImport < Import
         amount: signed_csv_amount(row).to_s,
         currency: default_currency.to_s,
         name: row_name(row),
-        category: combined_category(row),
+        # Opening balances become the account's opening anchor (see #import!), so their
+        # "Income: Starting Balances" category is never mapped or created.
+        category: starting_balance_csv_row?(row) ? "" : combined_category(row),
         notes: row[notes_col_label].to_s
       }
     end
 
-    rows.insert_all!(mapped_rows)
+    rows.insert_all!(mapped_rows) if mapped_rows.any?
     update_column(:rows_count, rows.count)
   end
 
@@ -42,8 +55,16 @@ class ActualImport < Import
     transaction do
       mappings.each(&:create_mappable!)
 
+      opening_balances = Hash.new(0)
+
       rows.each do |row|
         account = mappings.accounts.mappable_for(row.account)
+
+        if starting_balance_row?(row)
+          opening_balances[account] += row.signed_amount
+          next
+        end
+
         category = mappings.categories.mappable_for(row.category)
 
         entry = account.entries.build \
@@ -53,10 +74,16 @@ class ActualImport < Import
           currency: account.currency.presence || family.currency,
           notes: row.notes,
           entryable: Transaction.new(category: category),
-          import: self
+          import: self,
+          # Like the other file imports: once a bank connection (e.g. SimpleFIN) is linked,
+          # the overlapping days it re-sends are matched onto these entries rather than
+          # overwriting the payees and categories carried over from Actual.
+          import_locked: true
 
         entry.save!
       end
+
+      opening_balances.each { |account, amount| apply_opening_balance!(account, amount) }
     end
   end
 
@@ -87,6 +114,43 @@ class ActualImport < Import
   end
 
   private
+    def split_parent?(csv_row)
+      csv_row[amount_col_label].to_d.zero? && csv_row[SPLIT_AMOUNT_COLUMN].to_d.nonzero?
+    end
+
+    def starting_balance_csv_row?(csv_row)
+      csv_row[name_col_label].to_s.strip == STARTING_BALANCE_PAYEE &&
+        csv_row[category_col_label].to_s.strip.in?([ "", STARTING_BALANCES_CATEGORY ])
+    end
+
+    # Rows keep the payee as their name and had their category cleared in
+    # #generate_rows_from_csv, which is what identifies them here.
+    def starting_balance_row?(row)
+      row.name == STARTING_BALANCE_PAYEE && row.category.blank?
+    end
+
+    # Records Actual's starting balance as the account's opening anchor instead of a
+    # transaction: it is what the account held before its history begins, not income or an
+    # expense. Entries use Sure's sign (positive = outflow), so an asset's opening value is
+    # the negated sum while a liability's owed amount is the sum as is.
+    #
+    # The anchor is set, not added to: an account created in Sure before the import may
+    # already carry one, and Actual's starting balance is what its history starts from. It is
+    # dated the day before the account's oldest entry so the imported history follows it.
+    def apply_opening_balance!(account, signed_amount)
+      balance = account.classification == "liability" ? signed_amount : -signed_amount
+      anchor_entry = account.valuations.opening_anchor.first&.entry
+      oldest_entry_date = account.entries.where.not(id: anchor_entry&.id).minimum(:date)
+
+      result = account.set_opening_anchor_balance(balance: balance, date: oldest_entry_date&.prev_day)
+      unless result.success?
+        raise StandardError, "Could not set the opening balance of #{account.name}: #{result.error}"
+      end
+
+      # A newly created anchor belongs to this import, so reverting the import removes it.
+      account.valuations.opening_anchor.first&.entry&.update!(import: self) if anchor_entry.nil?
+    end
+
     def set_mappings
       assign_attributes(self.class.default_column_mappings)
       save!
