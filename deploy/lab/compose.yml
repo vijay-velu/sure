@@ -20,6 +20,7 @@ x-secrets-env: &secrets_env
   - active_record_encryption_deterministic_key
   - active_record_encryption_key_derivation_salt
   - oidc_client_secret
+  - smtp_password
 
 x-rails-env: &rails_env
   SELF_HOSTED: "true"
@@ -45,6 +46,13 @@ x-rails-env: &rails_env
   WEBAUTHN_RP_ID: ${APP_HOST}
   WEBAUTHN_ALLOWED_ORIGINS: https://${APP_HOST}
   ONBOARDING_STATE: closed # first user via SSO JIT or `bin/rails console`; no open signup page
+  # Outbound mail (bill reminders, invitations). Leave SMTP_ADDRESS empty to send none.
+  # The password lives in secrets/smtp_password.
+  SMTP_ADDRESS: ${SMTP_ADDRESS:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_TLS_ENABLED: ${SMTP_TLS_ENABLED:-false} # true only for implicit TLS on 465; 587 upgrades via STARTTLS
+  EMAIL_SENDER: ${EMAIL_SENDER:-sure@localhost}
 
 x-hardening: &hardening
   restart: unless-stopped
@@ -155,6 +163,7 @@ secrets:
   active_record_encryption_deterministic_key: { file: ./secrets/active_record_encryption_deterministic_key }
   active_record_encryption_key_derivation_salt: { file: ./secrets/active_record_encryption_key_derivation_salt }
   oidc_client_secret: { file: ./secrets/oidc_client_secret }
+  smtp_password: { file: ./secrets/smtp_password }
 
 volumes:
   app-storage:
