@@ -95,6 +95,18 @@ class MoneyTest < ActiveSupport::TestCase
     assert_equal Money.new(1001, :jpy), Money.new(1000.6, :jpy).for_display
   end
 
+  test "formats rupees with Indian digit grouping" do
+    assert_equal "₹12,34,567.89", Money.new(1234567.89, :inr).format
+    assert_equal "₹1,00,000.00", Money.new(100000, :inr).format
+    assert_equal "₹1,23,45,67,890.50", Money.new(1234567890.5, :inr).format
+    assert_equal "₹950.50", Money.new(950.5, :inr).format
+    assert_equal "-₹12,34,567.89", Money.new(-1234567.89, :inr).format
+  end
+
+  test "keeps western grouping for other currencies" do
+    assert_equal "$1,234,567.89", Money.new(1234567.89, :usd).format
+  end
+
   test "formats correctly for French locale" do
     # French uses non-breaking spaces (NBSP = \u00A0) between thousands and before currency symbol
     assert_equal "1\u00A0000,12\u00A0€", Money.new(1000.12, :eur).format(locale: :fr)

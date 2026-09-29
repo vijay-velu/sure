@@ -8,6 +8,10 @@ module Money::Formatting
   SPACE_DELIMITER_SYMBOL_AFTER = %i[pl nb hu].freeze
   # European style: dot as thousands delimiter, comma as decimal separator, symbol before number
   EUROPEAN_SYMBOL_BEFORE = %i[nl pt-BR].freeze
+  # Indian numbering groups thousands then every two digits (lakh, crore): 12,34,567.89.
+  # Applied to rupee amounts in the locales that otherwise use comma grouping; the locale
+  # styles above keep their own delimiters.
+  INDIAN_DIGIT_GROUPING = /(\d+?)(?=(\d\d)+(\d)(?!\d))/
 
   def format(options = {})
     locale = options[:locale] || I18n.locale
@@ -68,7 +72,7 @@ module Money::Formatting
       when [ "EUR", :en ], [ "EUR", :en_IE ]
         { delimiter: ",", separator: "." }
       else
-        {}
+        currency.iso_code == "INR" ? { delimiter_pattern: INDIAN_DIGIT_GROUPING } : {}
       end
     end
 end
