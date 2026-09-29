@@ -145,6 +145,16 @@ class AccountsControllerTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id(trading212_items(:pending_setup_item))}", count: 0
   end
 
+  test "index offers linking an unlinked loan to a provider" do
+    loan = accounts(:loan)
+    assert_not loan.linked?
+
+    get accounts_url
+
+    assert_response :success
+    assert_select "a[href=?]", select_provider_account_path(loan)
+  end
+
   test "should get show" do
     get account_url(@account)
     assert_response :success
