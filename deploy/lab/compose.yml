@@ -1,0 +1,169 @@
+# Hardened self-host stack for a home lab, built from this fork's source.
+#
+#   ./gen-secrets.sh && cp .env.example .env   # then edit .env and fill the two empty secrets
+#   docker network create proxy                 # once; your reverse proxy joins it too
+#   docker compose up -d --build
+#
+# Differences from the upstream compose.example.yml:
+#   - no hard-coded SECRET_KEY_BASE / DB password fallbacks; everything comes from ./secrets (mode 600)
+#   - Active Record encryption keys set, so provider credentials and raw bank payloads are encrypted at rest
+#   - no published host ports; web is reachable only via the external `proxy` network (your TLS/SSO proxy)
+#   - db and redis sit on an internal network with no route out
+#   - AI stays off (no OPENAI_ACCESS_TOKEN), so no financial data leaves the host for an LLM
+#   - no-new-privileges, all capabilities dropped, memory/pid limits
+name: sure-lab
+
+x-secrets-env: &secrets_env
+  - secret_key_base
+  - postgres_password
+  - active_record_encryption_primary_key
+  - active_record_encryption_deterministic_key
+  - active_record_encryption_key_derivation_salt
+  - oidc_client_secret
+
+x-rails-env: &rails_env
+  SELF_HOSTED: "true"
+  RAILS_ENV: production
+  # TLS terminates at the reverse proxy: trust X-Forwarded-Proto for secure cookies, don't redirect.
+  RAILS_ASSUME_SSL: "true"
+  RAILS_FORCE_SSL: "false"
+  APP_DOMAIN: ${APP_HOST:?set APP_HOST in .env}
+  DB_HOST: db
+  DB_PORT: "5432"
+  POSTGRES_USER: sure
+  POSTGRES_DB: sure_production
+  REDIS_URL: redis://redis:6379/1
+  OIDC_ISSUER: ${OIDC_ISSUER:-}
+  OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+  OIDC_REDIRECT_URI: https://${APP_HOST}/auth/openid_connect/callback
+  OIDC_BUTTON_LABEL: ${OIDC_BUTTON_LABEL:-Sign in with SSO}
+  # Upstream treats an empty list as "any email at the IdP may self-provision" — require it here.
+  ALLOWED_OIDC_DOMAINS: ${ALLOWED_OIDC_DOMAINS:?set ALLOWED_OIDC_DOMAINS in .env}
+  # link_only: SSO logs in existing users but never creates new ones. Use create_and_link once to bootstrap.
+  AUTH_JIT_MODE: ${AUTH_JIT_MODE:-link_only}
+  AUTH_LOCAL_LOGIN_ENABLED: ${AUTH_LOCAL_LOGIN_ENABLED:-true}
+  WEBAUTHN_RP_ID: ${APP_HOST}
+  WEBAUTHN_ALLOWED_ORIGINS: https://${APP_HOST}
+  ONBOARDING_STATE: closed # first user via SSO JIT or `bin/rails console`; no open signup page
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  init: true
+
+services:
+  web:
+    <<: *hardening
+    build: { context: ../.., dockerfile: Dockerfile }
+    image: sure-fork:local
+    entrypoint: ["/lab/load-secrets.sh"]
+    command: ["./bin/rails", "server"]
+    environment: *rails_env
+    secrets: *secrets_env
+    volumes:
+      - ./load-secrets.sh:/lab/load-secrets.sh:ro
+      - app-storage:/rails/storage
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [backend, proxy]
+    mem_limit: 1g
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  worker:
+    <<: *hardening
+    image: sure-fork:local
+    entrypoint: ["/lab/load-secrets.sh"]
+    command: ["bundle", "exec", "sidekiq"]
+    environment: *rails_env
+    secrets: *secrets_env
+    volumes:
+      - ./load-secrets.sh:/lab/load-secrets.sh:ro
+      - app-storage:/rails/storage
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      web: { condition: service_started } # web runs db:prepare; worker must not race it
+    networks: [backend, egress] # bank sync / market data need outbound HTTPS
+    mem_limit: 1g
+    pids_limit: 256
+
+  db:
+    <<: *hardening
+    image: postgres:16
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID] # entrypoint drops to the postgres user
+    environment:
+      POSTGRES_USER: sure
+      POSTGRES_DB: sure_production
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    networks: [backend]
+    shm_size: 128m
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sure -d sure_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    <<: *hardening
+    image: redis:7-alpine
+    cap_add: [SETGID, SETUID]
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes: [redis-data:/data]
+    networks: [backend]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # pg_dump every BACKUP_INTERVAL_HOURS into ./backups (mode 700, files 600), kept BACKUP_KEEP_DAYS.
+  # Uses the postgres image's own client: nothing is installed at start and it needs no internet.
+  # Copy ./backups off the host with your usual tooling (restic, rclone, borg).
+  backup:
+    <<: *hardening
+    image: postgres:16
+    profiles: [backup]
+    user: "1000:1000"
+    entrypoint: ["/lab/backup-loop.sh"]
+    environment:
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+    secrets: [postgres_password]
+    volumes:
+      - ./backup-loop.sh:/lab/backup-loop.sh:ro
+      - ./backups:/backups
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [backend]
+
+secrets:
+  secret_key_base: { file: ./secrets/secret_key_base }
+  postgres_password: { file: ./secrets/postgres_password }
+  active_record_encryption_primary_key: { file: ./secrets/active_record_encryption_primary_key }
+  active_record_encryption_deterministic_key: { file: ./secrets/active_record_encryption_deterministic_key }
+  active_record_encryption_key_derivation_salt: { file: ./secrets/active_record_encryption_key_derivation_salt }
+  oidc_client_secret: { file: ./secrets/oidc_client_secret }
+
+volumes:
+  app-storage:
+  postgres-data:
+  redis-data:
+
+networks:
+  backend:
+    internal: true
+  egress: {}
+  proxy:
+    external: true

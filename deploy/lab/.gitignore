@@ -1,3 +1,6 @@
 .env
 secrets/
 backups/
+
+# The repo root ignores compose.yml (users keep local copies); this one is the lab stack itself.
+!compose.yml

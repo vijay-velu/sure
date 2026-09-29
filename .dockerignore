@@ -43,3 +43,7 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Deployment kits (deploy/lab/secrets, .env, backups, exported CSVs) are host-side only and must
+# never be copied into an image layer.
+/deploy/

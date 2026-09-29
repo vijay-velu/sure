@@ -15,5 +15,7 @@ gen active_record_encryption_key_derivation_salt 32
 if chown 1000:1000 secrets/* 2>/dev/null; then chmod 400 secrets/*; else
   echo "WARN: could not chown secrets to uid 1000; run: sudo chown 1000:1000 secrets/* && sudo chmod 400 secrets/*"
 fi
+# Backups hold the whole database: owned by the backup container's uid, closed to everyone else.
+mkdir -p backups && chmod 700 backups && chown 1000:1000 backups 2>/dev/null || true
 ls -ln secrets
 echo "Next: put your IdP client secret in secrets/oidc_client_secret (as root: it is read-only for uid 1000)."
