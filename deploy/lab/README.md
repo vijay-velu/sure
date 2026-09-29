@@ -29,6 +29,15 @@ sed -i '/^AUTH_JIT_MODE=/d' .env && docker compose up -d web
 
 Once SSO works, set `AUTH_LOCAL_LOGIN_ENABLED=false` for SSO-only login.
 
+### Coming from Actual Budget
+
+See [MIGRATING_FROM_ACTUAL.md](MIGRATING_FROM_ACTUAL.md): export, import with opening balances and
+paired transfers, then SimpleFIN directly into Sure with a safe overlap.
+
+SimpleFIN runs in the `worker` container (it needs the `egress` network). Its access URL is a
+bearer credential for every linked bank account; with the Active Record encryption keys above it
+is stored encrypted at rest.
+
 ## Checks
 
 ```bash

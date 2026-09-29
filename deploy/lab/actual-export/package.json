@@ -1,0 +1,9 @@
+{
+  "name": "sure-actual-export",
+  "private": true,
+  "type": "module",
+  "description": "Headless export of an Actual Budget file in the CSV format Sure's Actual import reads",
+  "engines": { "node": ">=22" },
+  "dependencies": { "@actual-app/api": "26.9.0" },
+  "scripts": { "export": "node export.mjs" }
+}
