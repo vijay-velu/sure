@@ -612,6 +612,24 @@ class FamilyTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) { family.resolved_categorization_provider }
   end
 
+  test "a family switching to rupees gets the April financial year unless it chose one" do
+    family = families(:dylan_family)
+    family.update!(currency: "INR")
+    assert_equal 4, family.financial_year_start_month
+
+    family.update!(currency: "USD", financial_year_start_month: 1)
+    family.update!(currency: "INR", financial_year_start_month: 7)
+    assert_equal 7, family.financial_year_start_month
+  end
+
+  test "financial year start month must be a month" do
+    family = families(:dylan_family)
+    family.financial_year_start_month = 13
+
+    assert_not family.valid?
+    assert family.errors.added?(:financial_year_start_month, :inclusion, value: 13)
+  end
+
   private
     def set_preview_features(user, enabled)
       user.update!(preferences: (user.preferences || {}).merge("preview_features_enabled" => enabled))

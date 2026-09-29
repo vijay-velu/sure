@@ -33,6 +33,16 @@ en:
       label_short: "YTD"
       label: "Current Year"
       comparison_label: "vs. start of year"
+    current_financial_year:
+      label_short: "FYTD"
+      label: "Current Financial Year"
+      comparison_label: "vs. start of financial year"
+    last_financial_year:
+      label_short: "LFY"
+      label: "Last Financial Year"
+      comparison_label: "vs. last financial year"
+    financial_year:
+      label: "FY %{years}"
     last_365_days:
       label_short: "365D"
       label: "Last 365 Days"

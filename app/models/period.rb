@@ -58,6 +58,21 @@ class Period
       label: "Current Year",
       comparison_label: "vs. start of year"
     },
+    "current_financial_year" => {
+      date_range: -> { [ Period.financial_year_start_for(Date.current), Date.current ] },
+      label_short: "FYTD",
+      label: "Current Financial Year",
+      comparison_label: "vs. start of financial year"
+    },
+    "last_financial_year" => {
+      date_range: -> {
+        start_date = Period.financial_year_start_for(Date.current).prev_year
+        [ start_date, start_date.next_year - 1.day ]
+      },
+      label_short: "LFY",
+      label: "Last Financial Year",
+      comparison_label: "vs. last financial year"
+    },
     "last_365_days" => {
       date_range: -> { [ 365.days.ago.to_date, Date.current ] },
       label_short: "365D",
@@ -94,7 +109,21 @@ class Period
     }
   }
 
+  # Offered only when the family's financial year does not start in January; otherwise
+  # they would repeat Current Year. Stored keys keep working either way.
+  FINANCIAL_YEAR_KEYS = %w[current_financial_year last_financial_year].freeze
+
   class << self
+    # Month the financial year starts in (April in India), from the current family.
+    def financial_year_start_month
+      Current.family&.financial_year_start_month || 1
+    end
+
+    def financial_year_start_for(date, start_month: financial_year_start_month)
+      start_date = Date.new(date.year, start_month, 1)
+      start_date > date ? start_date.prev_year : start_date
+    end
+
     def valid_key?(key)
       PERIODS.key?(key)
     end
@@ -114,7 +143,9 @@ class Period
     end
 
     def all
-      PERIODS.map { |key, period| from_key(key) }
+      keys = PERIODS.keys
+      keys -= FINANCIAL_YEAR_KEYS if financial_year_start_month == 1
+      keys.map { |key| from_key(key) }
     end
 
     def as_options
@@ -183,6 +214,8 @@ class Period
   end
 
   def label
+    return financial_year_label if financial_year?
+
     if key
       I18n.t("period.#{key}.label", default: key_metadata&.fetch(:label) || "Custom Period")
     else
@@ -229,7 +262,21 @@ class Period
     )
   end
 
+  def financial_year?
+    key.in?(FINANCIAL_YEAR_KEYS)
+  end
+
   private
+    # "FY 2026-27": the years the financial year spans, as it is written in India. A
+    # January start spans one year, so it is just "FY 2026".
+    def financial_year_label
+      first_year = start_date.year
+      last_year = (start_date.next_year - 1.day).year
+      years = first_year == last_year ? first_year.to_s : "#{first_year}-#{format("%02d", last_year % 100)}"
+
+      I18n.t("period.financial_year.label", years: years, default: "FY %{years}")
+    end
+
     def key_metadata
       @key_metadata ||= PERIODS[key]
     end

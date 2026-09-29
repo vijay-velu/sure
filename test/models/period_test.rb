@@ -148,4 +148,45 @@ class PeriodTest < ActiveSupport::TestCase
     assert_equal 5.years.ago.to_date, period.start_date
     assert_equal Date.current, period.end_date
   end
+
+  test "financial year starting in April puts January to March in the previous year" do
+    family = families(:dylan_family)
+    family.update!(financial_year_start_month: 4)
+    Current.stubs(:family).returns(family)
+
+    travel_to Date.new(2027, 2, 15) do
+      current = Period.current_financial_year
+      last = Period.last_financial_year
+
+      assert_equal [ Date.new(2026, 4, 1), Date.new(2027, 2, 15) ], [ current.start_date, current.end_date ]
+      assert_equal [ Date.new(2025, 4, 1), Date.new(2026, 3, 31) ], [ last.start_date, last.end_date ]
+      assert_equal [ "FY 2026-27", "FY 2025-26" ], [ current.label, last.label ]
+    end
+
+    travel_to Date.new(2026, 4, 1) do
+      assert_equal Date.new(2026, 4, 1), Period.current_financial_year.start_date
+    end
+  end
+
+  test "financial year periods are only offered when the year does not start in January" do
+    family = families(:dylan_family)
+    Current.stubs(:family).returns(family)
+
+    family.update!(financial_year_start_month: 1)
+    assert_not_includes Period.all.map(&:key), "current_financial_year"
+    assert Period.valid_key?("current_financial_year")
+
+    family.update!(financial_year_start_month: 4)
+    assert_includes Period.all.map(&:key), "current_financial_year"
+    assert_includes Period.all.map(&:key), "last_financial_year"
+  end
+
+  test "without a family the financial year is the calendar year" do
+    Current.stubs(:family).returns(nil)
+
+    travel_to Date.new(2026, 9, 29) do
+      assert_equal Date.new(2026, 1, 1), Period.current_financial_year.start_date
+      assert_equal "FY 2025", Period.last_financial_year.label
+    end
+  end
 end

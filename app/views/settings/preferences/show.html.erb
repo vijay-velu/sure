@@ -41,6 +41,10 @@
         <% if @user.family.uses_custom_month_start? %>
           <%= render DS::Alert.new(message: t(".month_start_day_warning"), variant: :warning) %>
         <% end %>
+        <%= family_form.select :financial_year_start_month,
+            (1..12).map { |month| [I18n.t("date.month_names")[month], month] },
+            { label: t(".financial_year_start_month"), hint: t(".financial_year_start_month_hint") },
+            { data: { auto_submit_form_target: "auto" } } %>
         <% if Current.user.admin? && preview_features_enabled? %>
           <div class="flex items-center justify-between">
             <div class="space-y-1">

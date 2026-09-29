@@ -157,6 +157,7 @@ class Family < ApplicationRecord
   validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
   validates :date_format, inclusion: { in: DATE_FORMATS.map(&:last) }
   validates :month_start_day, inclusion: { in: 1..28 }
+  validates :financial_year_start_month, inclusion: { in: 1..12 }
   validates :moniker, inclusion: { in: MONIKERS }
   validates :assistant_type, inclusion: { in: ASSISTANT_TYPES }
   validates :categorization_provider, inclusion: { in: CATEGORIZATION_PROVIDERS }
@@ -243,6 +244,7 @@ class Family < ApplicationRecord
   validate :timezone_must_be_a_known_zone, if: :timezone_changed?
 
   before_validation :normalize_enabled_currencies!
+  before_validation :default_financial_year_for_currency
 
   def primary_currency_code
     self.class.normalize_currency_code(currency) || "USD"
@@ -740,6 +742,15 @@ class Family < ApplicationRecord
         .joins("INNER JOIN depositories ON depositories.id = accounts.accountable_id AND accounts.accountable_type = 'Depository'")
         .where(depositories: { subtype: Depository::TAX_ADVANTAGED_SUBTYPES })
         .pluck(:id)
+    end
+
+    # India's financial year runs April to March. A family that picks rupees (at signup or
+    # onboarding) starts there unless it has chosen a month itself; it stays editable.
+    def default_financial_year_for_currency
+      return unless currency_changed? && currency == "INR"
+      return if financial_year_start_month_changed? || financial_year_start_month != 1
+
+      self.financial_year_start_month = 4
     end
 
     def normalize_enabled_currencies!
