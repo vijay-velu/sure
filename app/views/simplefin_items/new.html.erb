@@ -15,6 +15,11 @@
             <%= f.label :setup_token, t(".setup_token"), class: "text-sm text-secondary block mb-1" %>
             <%= f.text_field :setup_token, class: "input", placeholder: t(".setup_token_placeholder") %>
           </div>
+          <div>
+            <%= f.label :sync_start_date, t(".sync_start_date"), class: "text-sm text-secondary block mb-1" %>
+            <%= f.date_field :sync_start_date, class: "input", max: Date.current %>
+            <p class="text-xs text-secondary mt-1"><%= t(".sync_start_date_hint") %></p>
+          </div>
           <div class="flex items-center gap-2 justify-end pt-2">
             <%= render DS::Link.new(
               text: t(".cancel"),
